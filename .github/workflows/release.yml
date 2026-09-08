@@ -41,16 +41,20 @@ jobs:
           mkdir -p dist
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cp "target/${{ matrix.platform.target }}/release/koc-ocr-cli.exe" "dist/${{ matrix.platform.artifact }}"
+            (cd dist && sha256sum "${{ matrix.platform.artifact }}" > "${{ matrix.platform.artifact }}.sha256")
           else
             cp "target/${{ matrix.platform.target }}/release/koc-ocr-cli" "dist/${{ matrix.platform.artifact }}"
             chmod +x "dist/${{ matrix.platform.artifact }}"
+            (cd dist && shasum -a 256 "${{ matrix.platform.artifact }}" > "${{ matrix.platform.artifact }}.sha256")
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.name }}
-          path: dist/${{ matrix.platform.artifact }}
+          path: |
+            dist/${{ matrix.platform.artifact }}
+            dist/${{ matrix.platform.artifact }}.sha256
 
   publish:
     name: Publish GitHub Release
@@ -66,12 +70,31 @@ jobs:
         with:
           path: artifacts
 
+      - name: Build release notes
+        shell: bash
+        run: |
+          cat > RELEASE_NOTES.md <<'EOF'
+          KOC OCR CLI 二进制版本。
+
+          使用 `koc-ocr-cli init --model medium` 初始化模型。
+          使用 `koc-ocr-cli export <图片目录> --type live` 或 `--type video` 导出表格。
+
+          ## 构建产物 SHA256
+
+          ```text
+          EOF
+          find artifacts -type f ! -name '*.sha256' -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | sed 's# artifacts/[^/]*/#  #' >> RELEASE_NOTES.md
+          cat >> RELEASE_NOTES.md <<'EOF'
+          ```
+
+          每个二进制旁边也会上传同名 `.sha256` 文件，方便脚本校验。
+          EOF
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
-          body: |
-            KOC OCR CLI 二进制版本。
-
-            使用 `koc-ocr-cli init --model medium` 初始化模型。
-            使用 `koc-ocr-cli export <图片目录> --type live` 或 `--type video` 导出表格。
+          body_path: RELEASE_NOTES.md

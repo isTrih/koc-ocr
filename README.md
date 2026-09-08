@@ -205,16 +205,20 @@ target/release/koc-ocr-cli.exe
 
 ## GitHub Actions 发布
 
-推送形如 `v2.1.0` 的标签会触发 `.github/workflows/release.yml`。
+推送形如 `v2.1.1` 的标签会触发 `.github/workflows/release.yml`。
 
 发布产物：
 
 ```text
 koc-ocr-cli-macos-arm64
+koc-ocr-cli-macos-arm64.sha256
 koc-ocr-cli-windows-x64.exe
+koc-ocr-cli-windows-x64.exe.sha256
 ```
 
 这两个产物都是单文件二进制。使用时下载对应平台文件，放到 PATH 中或直接用绝对路径调用。
+
+Release 页面会直接展示每个二进制的 SHA256。每个二进制旁边也会上传同名 `.sha256` 文件，适合脚本自动校验。
 
 ## 后续 Node 封装建议
 
