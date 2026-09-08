@@ -33,6 +33,29 @@ pub struct ExportSummary {
     pub video_row_count: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScreenshotKind {
+    Auto,
+    Live,
+    Video,
+}
+
+impl ScreenshotKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Live => "live",
+            Self::Video => "video",
+        }
+    }
+}
+
+impl Default for ScreenshotKind {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ExportEvent {
     ModelDownload(ModelDownloadProgress),
@@ -54,8 +77,10 @@ pub struct ModelDownloadProgress {
 #[derive(Debug, Clone)]
 pub struct ExportOptions {
     pub image_dir: PathBuf,
+    pub output_dir: PathBuf,
     pub model_dir: PathBuf,
     pub model_tier: OcrModelTier,
+    pub screenshot_kind: ScreenshotKind,
     pub ocr_engine_config: Option<OcrEngineConfig>,
     pub model_cdn_base_url: String,
     pub download_missing_models: bool,
@@ -66,8 +91,10 @@ impl ExportOptions {
     pub fn new(image_dir: impl Into<PathBuf>) -> Self {
         Self {
             image_dir: image_dir.into(),
+            output_dir: PathBuf::new(),
             model_dir: PathBuf::from("models"),
             model_tier: OcrModelTier::Medium,
+            screenshot_kind: ScreenshotKind::Auto,
             ocr_engine_config: None,
             model_cdn_base_url: DEFAULT_MODEL_CDN_BASE_URL.to_owned(),
             download_missing_models: true,
@@ -80,8 +107,18 @@ impl ExportOptions {
         self
     }
 
+    pub fn with_output_dir(mut self, output_dir: impl Into<PathBuf>) -> Self {
+        self.output_dir = output_dir.into();
+        self
+    }
+
     pub fn with_model_tier(mut self, model_tier: OcrModelTier) -> Self {
         self.model_tier = model_tier;
+        self
+    }
+
+    pub fn with_screenshot_kind(mut self, screenshot_kind: ScreenshotKind) -> Self {
+        self.screenshot_kind = screenshot_kind;
         self
     }
 
@@ -189,8 +226,8 @@ pub fn export_csv_with_events(
         ocr_config.engine_config = engine_config;
     }
     if options.download_missing_models {
-        ensure_models_available(
-            &ocr_config,
+        ensure_ocr_models_available_with_progress(
+            &options.model_dir,
             options.model_tier,
             &options.model_cdn_base_url,
             &mut on_event,
@@ -229,16 +266,29 @@ pub fn export_csv_with_events(
             image_path: image_path.clone(),
             cache_hit,
         }));
-        if is_live_page(&blocks) {
-            live_rows.push(extract_live_row(&file_name, &blocks));
-        }
-        if is_video_page(&blocks) {
-            video_rows.push(extract_video_row(&file_name, &blocks));
+        match options.screenshot_kind {
+            ScreenshotKind::Auto => {
+                if is_live_page(&blocks) {
+                    live_rows.push(extract_live_row(&file_name, &blocks));
+                }
+                if is_video_page(&blocks) {
+                    video_rows.push(extract_video_row(&file_name, &blocks));
+                }
+            }
+            ScreenshotKind::Live => live_rows.push(extract_live_row(&file_name, &blocks)),
+            ScreenshotKind::Video => video_rows.push(extract_video_row(&file_name, &blocks)),
         }
     }
 
-    let live_csv_path = image_dir.join("直播.csv");
-    let video_csv_path = image_dir.join("视频.csv");
+    let output_dir = if options.output_dir.as_os_str().is_empty() {
+        image_dir.to_path_buf()
+    } else {
+        options.output_dir.clone()
+    };
+    fs::create_dir_all(&output_dir)?;
+
+    let live_csv_path = output_dir.join("直播.csv");
+    let video_csv_path = output_dir.join("视频.csv");
 
     write_live_csv(&live_csv_path, &live_rows)?;
     write_video_csv(&video_csv_path, &video_rows)?;
@@ -299,6 +349,25 @@ fn ensure_models_available(
     }
 
     Ok(())
+}
+
+pub fn ensure_ocr_models_available(model_dir: impl AsRef<Path>, tier: OcrModelTier) -> Result<()> {
+    ensure_ocr_models_available_with_progress(
+        model_dir.as_ref(),
+        tier,
+        DEFAULT_MODEL_CDN_BASE_URL,
+        &mut |_| {},
+    )
+}
+
+pub fn ensure_ocr_models_available_with_progress(
+    model_dir: impl AsRef<Path>,
+    tier: OcrModelTier,
+    cdn_base_url: &str,
+    on_event: &mut impl FnMut(ExportEvent),
+) -> Result<()> {
+    let config = OcrClientConfig::for_tier_in_dir(tier, model_dir.as_ref());
+    ensure_models_available(&config, tier, cdn_base_url, on_event)
 }
 
 fn download_file(

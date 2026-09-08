@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 use whwjm_ocr::{
     ExportControl, ExportEvent, ExportOptions, ExportSummary, ModelDownloadProgress,
-    OcrEngineConfig, OcrModelTier, export_csv_with_events,
+    OcrModelTier, desktop_ocr_engine_config, export_csv_with_events,
 };
 
 #[derive(Default)]
@@ -194,13 +194,6 @@ fn parse_model_tier(value: &str) -> Result<OcrModelTier, String> {
         "medium" => Ok(OcrModelTier::Medium),
         other => Err(format!("未知模型档位：{other}")),
     }
-}
-
-fn desktop_ocr_engine_config() -> OcrEngineConfig {
-    OcrEngineConfig::fast()
-        .with_threads(2)
-        .with_parallel(false)
-        .with_min_result_confidence(0.5)
 }
 
 fn map_export_event(event: ExportEvent) -> UiExportEvent {

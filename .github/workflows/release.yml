@@ -1,4 +1,4 @@
-name: Release
+name: Release CLI
 
 on:
   push:
@@ -17,64 +17,33 @@ jobs:
           - name: macos-arm64
             os: macos-14
             target: aarch64-apple-darwin
-            bundles: app
-            artifact: douyin-ocr-macos-arm64-unsigned.dmg
+            artifact: koc-ocr-cli-macos-arm64
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            bundles: nsis
-            artifact: douyin-ocr-windows-x64-setup-unsigned.exe
+            artifact: koc-ocr-cli-windows-x64.exe
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.20
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform.target }}
 
-      - name: Install frontend dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build Tauri app
-        run: bun run tauri build --target ${{ matrix.platform.target }} --bundles ${{ matrix.platform.bundles }}
+      - name: Build CLI
+        run: cargo build --release --locked --bin koc-ocr-cli --target ${{ matrix.platform.target }}
 
       - name: Package artifact
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            app_path="$(find "src-tauri/target/${{ matrix.platform.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" -type d -print -quit)"
-            if [[ -z "$app_path" ]]; then
-              echo "macOS app bundle not found"
-              exit 1
-            fi
-            dmg_root="$RUNNER_TEMP/douyin-ocr-dmg"
-            rm -rf "$dmg_root"
-            mkdir -p "$dmg_root"
-            ditto "$app_path" "$dmg_root/$(basename "$app_path")"
-            cp "已损坏修复" "$dmg_root/已损坏修复"
-            chmod +x "$dmg_root/已损坏修复"
-            ln -s /Applications "$dmg_root/Applications"
-            hdiutil create \
-              -volname "抖音登记OCR" \
-              -srcfolder "$dmg_root" \
-              -ov \
-              -format UDZO \
-              "dist/${{ matrix.platform.artifact }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp "target/${{ matrix.platform.target }}/release/koc-ocr-cli.exe" "dist/${{ matrix.platform.artifact }}"
           else
-            installer_path="$(find "src-tauri/target/${{ matrix.platform.target }}/release/bundle/nsis" -maxdepth 1 -name "*.exe" -type f -print -quit)"
-            if [[ -z "$installer_path" ]]; then
-              echo "Windows NSIS installer not found"
-              exit 1
-            fi
-            cp "$installer_path" "dist/${{ matrix.platform.artifact }}"
+            cp "target/${{ matrix.platform.target }}/release/koc-ocr-cli" "dist/${{ matrix.platform.artifact }}"
+            chmod +x "dist/${{ matrix.platform.artifact }}"
           fi
 
       - name: Upload artifact
@@ -102,8 +71,7 @@ jobs:
         with:
           files: artifacts/**/*
           body: |
-            本版本是基于 Tauri v2 的 2.0 桌面程序，包含未签名的 macOS 和 Windows 安装包。
+            KOC OCR CLI 二进制版本。
 
-            macOS 包为 DMG，内含 `抖音登记OCR.app` 和 Unix 可执行修复工具 `已损坏修复`。由于未签名，如遇“已损坏，无法打开”或“来自身份不明的开发者”，可先将 App 拖入应用程序目录，再运行修复工具。
-
-            Windows 包是未签名 NSIS 安装器，可能会显示 SmartScreen 提醒。
+            使用 `koc-ocr-cli init --model medium` 初始化模型。
+            使用 `koc-ocr-cli export <图片目录> --type live` 或 `--type video` 导出表格。

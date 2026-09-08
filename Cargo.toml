@@ -1,17 +1,25 @@
 [package]
-name = "whwjm-ocr"
-version = "2.0.2"
+name = "koc-ocr-cli"
+version = "2.1.0"
 edition = "2024"
-description = "抖音登记OCR"
+description = "KOC 抖音 OCR CLI"
+authors = ["Lilith@HUAHaohui"]
+
+[lib]
+name = "whwjm_ocr"
 
 [package.metadata.bundle]
-name = "抖音登记OCR"
-identifier = "douyinocr.trih.topgamers.cn"
+name = "KOC OCR CLI"
+identifier = "kococr.huahaohui.lilith"
 icon = ["ocr-logo.png"]
 
 [features]
 default = []
 slint-gui = ["dep:rfd", "dep:slint", "dep:webbrowser"]
+
+[[bin]]
+name = "koc-ocr-cli"
+path = "src/main.rs"
 
 [[bin]]
 name = "export_gui"
@@ -20,6 +28,7 @@ required-features = ["slint-gui"]
 
 [dependencies]
 anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
 image = "0.25"
 ocr-rs = "2.3.x"
 rfd = { version = "0.17.2", optional = true }

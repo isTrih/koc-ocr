@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::thread;
 use whwjm_ocr::{
     ExportControl, ExportEvent, ExportOptions, ModelDownloadProgress, OcrModelTier,
-    export_csv_with_events,
+    desktop_ocr_engine_config, export_csv_with_events,
 };
 
 slint::slint! {
@@ -64,7 +64,7 @@ slint::slint! {
     }
 
     export component ExportApp inherits Window {
-        title: "抖音登记OCR";
+        title: "KOC OCR CLI";
         icon: @image-url("../../ocr-logo.png");
         width: 860px;
         height: 680px;
@@ -97,7 +97,7 @@ slint::slint! {
                 spacing: 8px;
 
                 Text {
-                    text: "抖音登记OCR";
+                    text: "KOC OCR CLI";
                     font-size: 24px;
                     font-weight: 700;
                     horizontal-stretch: 1;
@@ -258,15 +258,14 @@ slint::slint! {
                     padding: 12px;
                     spacing: 4px;
 
-                    Text { text: "开发者：三氢@芜湖玩家盟"; font-weight: 700; color: #172033; }
-                    Text { text: "三氢 GitHub：https://github.com/isTrih"; color: #0a66c2; }
-                    Text { text: "芜湖玩家盟官网：https://www.topgamers.com.cn/"; color: #0a66c2; }
+                    Text { text: "开发者：Lilith@HUAHaohui"; font-weight: 700; color: #172033; }
+                    Text { text: "作者主页：https://github.com/HUAHaohui"; color: #0a66c2; }
                 }
 
                 TouchArea {
                     mouse-cursor: pointer;
                     clicked => {
-                        root.open_link("https://github.com/isTrih");
+                        root.open_link("https://github.com/HUAHaohui");
                     }
                 }
             }
@@ -397,6 +396,7 @@ fn main() -> Result<()> {
             let options = ExportOptions::new(&folder)
                 .with_model_dir(default_model_dir())
                 .with_model_tier(model_tier)
+                .with_ocr_engine_config(desktop_ocr_engine_config())
                 .with_control(control);
 
             let result = export_csv_with_events(options, |event| {

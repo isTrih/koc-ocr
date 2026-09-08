@@ -76,6 +76,23 @@ impl Default for OcrClientConfig {
     }
 }
 
+pub fn desktop_ocr_engine_config() -> OcrEngineConfig {
+    let available_threads = std::thread::available_parallelism()
+        .map(|threads| threads.get())
+        .unwrap_or(4);
+    let inference_threads = match available_threads {
+        0..=2 => 1,
+        3..=5 => 2,
+        _ => 4,
+    };
+    let enable_parallel = available_threads >= 6;
+
+    OcrEngineConfig::fast()
+        .with_threads(inference_threads)
+        .with_parallel(enable_parallel)
+        .with_min_result_confidence(0.5)
+}
+
 impl OcrClientConfig {
     pub fn for_tier_in_dir(tier: OcrModelTier, model_dir: impl AsRef<Path>) -> Self {
         let model_dir = model_dir.as_ref();

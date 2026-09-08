@@ -52,11 +52,6 @@ type Project = {
   repo: string;
 };
 
-type RelatedLink = {
-  label: string;
-  url: string;
-};
-
 const projects: Project[] = [
   { name: "PaddleOCR", license: "Apache-2.0", repo: "https://github.com/PaddlePaddle/PaddleOCR" },
   { name: "ocr-rs", license: "Apache-2.0", repo: "https://github.com/zibo-chen/rust-paddle-ocr" },
@@ -69,11 +64,6 @@ const projects: Project[] = [
   { name: "anyhow", license: "MIT 或 Apache-2.0", repo: "https://github.com/dtolnay/anyhow" },
   { name: "ureq", license: "MIT 或 Apache-2.0", repo: "https://github.com/algesten/ureq" },
   { name: "Rust", license: "MIT 或 Apache-2.0", repo: "https://github.com/rust-lang/rust" },
-];
-
-const relatedLinks: RelatedLink[] = [
-  { label: "三氢 GitHub", url: "https://github.com/isTrih" },
-  { label: "芜湖玩家盟官网", url: "https://www.topgamers.com.cn/" },
 ];
 
 const state = {
@@ -96,15 +86,20 @@ if (!appRoot) {
 
 const app = appRoot;
 let renderQueued = false;
+let fullRenderQueued = false;
+let lastImageLogAt = 0;
 
 function render() {
   renderQueued = false;
+  fullRenderQueued = false;
   app.innerHTML = state.showAbout ? renderAbout() : renderMain();
   bindMainEvents();
   bindAboutEvents();
+  updateDynamicElements();
 }
 
 function scheduleRender() {
+  fullRenderQueued = true;
   if (renderQueued) {
     return;
   }
@@ -113,17 +108,58 @@ function scheduleRender() {
   requestAnimationFrame(render);
 }
 
-function renderMain() {
-  const logs = state.logs.length > 0
-    ? state.logs.map((line) => `<div class="log-line">${escapeHtml(line)}</div>`).join("")
-    : `<div class="empty-log">等待开始导出</div>`;
+function updateDynamicElements() {
+  const statusLine = app.querySelector<HTMLElement>("[data-role='status']");
+  if (statusLine) {
+    statusLine.textContent = state.statusText;
+  }
 
+  const downloadLine = app.querySelector<HTMLElement>("[data-role='download']");
+  if (downloadLine) {
+    downloadLine.textContent = state.downloadText;
+    downloadLine.hidden = state.downloadText.length === 0;
+  }
+
+  const progressFill = app.querySelector<HTMLElement>("[data-role='progress-fill']");
+  if (progressFill) {
+    progressFill.style.width = `${Math.round(state.progress * 100)}%`;
+  }
+
+  const logPanel = app.querySelector<HTMLElement>("[data-role='logs']");
+  if (logPanel) {
+    logPanel.innerHTML = renderLogs();
+  }
+}
+
+function scheduleDynamicUpdate() {
+  if (state.showAbout) {
+    scheduleRender();
+    return;
+  }
+
+  if (renderQueued) {
+    return;
+  }
+
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    if (fullRenderQueued) {
+      render();
+      return;
+    }
+
+    renderQueued = false;
+    updateDynamicElements();
+  });
+}
+
+function renderMain() {
   return `
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <h1>抖音登记OCR</h1>
-          <p>批量识别抖音数据截图，整理直播与视频 CSV。</p>
+          <h1>KOC OCR CLI</h1>
+          <p>批量识别抖音 KOC 数据截图，整理直播与视频 CSV。</p>
         </div>
         <button class="ghost-button" data-action="about">关于</button>
       </header>
@@ -154,18 +190,24 @@ function renderMain() {
       </section>
 
       <section class="status-area">
-        <div class="status-line">${escapeHtml(state.statusText)}</div>
-        ${state.downloadText ? `<div class="download-line">${escapeHtml(state.downloadText)}</div>` : ""}
+        <div class="status-line" data-role="status">${escapeHtml(state.statusText)}</div>
+        <div class="download-line" data-role="download" ${state.downloadText ? "" : "hidden"}>${escapeHtml(state.downloadText)}</div>
         <div class="progress-track">
-          <div class="progress-fill" style="width: ${Math.round(state.progress * 100)}%"></div>
+          <div class="progress-fill" data-role="progress-fill" style="width: ${Math.round(state.progress * 100)}%"></div>
         </div>
       </section>
 
-      <section class="log-panel">
-        ${logs}
+      <section class="log-panel" data-role="logs">
+        ${renderLogs()}
       </section>
     </main>
   `;
+}
+
+function renderLogs() {
+  return state.logs.length > 0
+    ? state.logs.map((line) => `<div class="log-line">${escapeHtml(line)}</div>`).join("")
+    : `<div class="empty-log">等待开始导出</div>`;
 }
 
 function renderAbout() {
@@ -174,16 +216,13 @@ function renderAbout() {
       <header class="topbar">
         <div>
           <h1>关于</h1>
-          <p>抖音登记OCR 2.0，基于 Tauri v2 重构。</p>
+          <p>KOC OCR CLI，命令行优先的抖音 KOC OCR 工具。</p>
         </div>
         <button class="ghost-button" data-action="back">返回</button>
       </header>
 
       <section class="developer-panel">
-        <strong>开发者：三氢@芜湖玩家盟</strong>
-        <div class="related-links">
-          ${relatedLinks.map(renderRelatedLink).join("")}
-        </div>
+        <strong>开发者：Lilith@HUAHaohui</strong>
       </section>
 
       <section class="project-list">
@@ -204,15 +243,6 @@ function renderProject(project: Project) {
       <span>${escapeHtml(project.name)}</span>
       <span>${escapeHtml(project.license)}</span>
       <span>${escapeHtml(project.repo)}</span>
-    </button>
-  `;
-}
-
-function renderRelatedLink(link: RelatedLink) {
-  return `
-    <button class="link-button" data-url="${escapeAttribute(link.url)}">
-      <span>${escapeHtml(link.label)}</span>
-      <span>${escapeHtml(link.url)}</span>
     </button>
   `;
 }
@@ -330,6 +360,8 @@ async function stopExport() {
 }
 
 function handleExportEvent(event: ExportEvent) {
+  let needsFullRender = false;
+
   switch (event.kind) {
     case "modelDownload":
       handleModelDownload(event);
@@ -338,7 +370,7 @@ function handleExportEvent(event: ExportEvent) {
       state.downloadText = "";
       state.progress = event.total > 0 ? event.current / event.total : 0;
       state.statusText = `正在处理 ${event.current}/${event.total}`;
-      appendLog(`${event.current}/${event.total} ${event.fileName}${event.cacheHit ? "（缓存）" : ""}`);
+      appendImageLog(event);
       break;
     case "complete":
       state.running = false;
@@ -348,6 +380,7 @@ function handleExportEvent(event: ExportEvent) {
       state.statusText = `导出完成：${event.summary.imageCount} 张图片，直播 ${event.summary.liveRowCount} 行，视频 ${event.summary.videoRowCount} 行`;
       appendLog(`直播CSV：${event.summary.liveCsvPath}`);
       appendLog(`视频CSV：${event.summary.videoCsvPath}`);
+      needsFullRender = true;
       break;
     case "error":
       state.running = false;
@@ -355,14 +388,20 @@ function handleExportEvent(event: ExportEvent) {
       state.downloadText = "";
       state.statusText = `导出失败：${event.message}`;
       appendLog(`错误：${event.message}`);
+      needsFullRender = true;
       break;
     case "state":
       state.running = event.running;
       state.paused = event.paused;
+      needsFullRender = true;
       break;
   }
 
-  scheduleRender();
+  if (needsFullRender) {
+    scheduleRender();
+  } else {
+    scheduleDynamicUpdate();
+  }
 }
 
 function handleModelDownload(event: Extract<ExportEvent, { kind: "modelDownload" }>) {
@@ -379,7 +418,25 @@ function handleModelDownload(event: Extract<ExportEvent, { kind: "modelDownload"
 }
 
 function appendLog(line: string) {
-  state.logs = [...state.logs, line].slice(-200);
+  state.logs.push(line);
+  if (state.logs.length > 80) {
+    state.logs.splice(0, state.logs.length - 80);
+  }
+}
+
+function appendImageLog(event: Extract<ExportEvent, { kind: "image" }>) {
+  const now = performance.now();
+  const shouldLog = event.cacheHit
+    || event.current === 1
+    || event.current === event.total
+    || now - lastImageLogAt >= 250;
+
+  if (!shouldLog) {
+    return;
+  }
+
+  lastImageLogAt = now;
+  appendLog(`${event.current}/${event.total} ${event.fileName}${event.cacheHit ? "（缓存）" : ""}`);
 }
 
 function formatBytes(bytes: number) {

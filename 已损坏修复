@@ -34,7 +34,7 @@ TOPGAMERS_ASCII
 printf "%b" "${NC}"
 
 echo ""
-echo -e "                  ${LIGHT_PURPLE}三氢@芜湖玩家盟${NC}"
+echo -e "                  ${LIGHT_PURPLE}Lilith@HUAHaohui${NC}"
 echo ""
 
 parentPath=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
@@ -61,8 +61,7 @@ if [ ! -d "$appDIR" ];then
   sudo /usr/bin/xattr -rd com.apple.quarantine /Applications/"$appBashName"
   echo ""
   echo -e "😁 ${LIGHT_GREEN}修复成功！${NC}您现在可以正常运行 ${LIGHT_GREEN}${appBashName%.*} ${NC}了。"
-  echo -e "🔥 三氢 GitHub 👉${LIGHT_BLUE} https://github.com/isTrih${NC}"
-  echo -e "🎮 芜湖玩家盟官网 👉${LIGHT_BLUE} https://www.topgamers.com.cn/${NC}"
+  echo -e "作者：${LIGHT_BLUE}Lilith@HUAHaohui${NC}"
 fi
 echo ""
 echo -e "✌️  操作已成功完成, 本窗口可以关闭啦！"

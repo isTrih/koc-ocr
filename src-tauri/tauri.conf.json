@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "抖音登记OCR",
-  "version": "2.0.2",
-  "identifier": "douyinocr.trih.topgamers.cn",
+  "productName": "KOC OCR CLI",
+  "version": "2.1.0",
+  "identifier": "kococr.huahaohui.lilith",
   "build": {
     "beforeDevCommand": "bun run dev",
     "beforeBuildCommand": "bun run build",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "抖音登记OCR",
+        "title": "KOC OCR CLI",
         "width": 980,
         "height": 720,
         "minWidth": 720,
@@ -37,8 +37,8 @@
       "icons/icon.ico"
     ],
     "category": "Productivity",
-    "shortDescription": "抖音登记OCR",
-    "longDescription": "批量识别抖音数据截图并导出直播与视频 CSV。",
+    "shortDescription": "KOC OCR CLI",
+    "longDescription": "批量识别抖音 KOC 数据截图并导出直播与视频 CSV。",
     "macOS": {
       "minimumSystemVersion": "11.0"
     },
